@@ -1,0 +1,54 @@
+[
+    {
+      "c_name": "TextInput",
+      "fieldName": "fullName",
+      "path": "user.fullName",
+      "label": "Full Name",
+      "placeholder": "John Doe",
+      "validations": { "required": "Name is required" }
+    },
+    {
+        "c_name" : "TextInput",
+        "fieldName" : "lastname",
+        "path" : "user.lastname",
+        "label" : "Last Name",
+        "placeholder" : "Doe",
+        "validations" : { "required" : "Last name is required" }
+    },
+    {
+      "c_name": "NumberInput",
+      "fieldName": "age",
+      "path": "user.age",
+      "label": "Age",
+      "placeholder": "25",
+      "validations": { "required": "Age is required" }
+    },
+    {
+      "c_name": "TextInput",
+      "fieldName": "email",
+      "path": "creds.email",
+      "label": "Email",
+      "type": "email",
+      "placeholder": "you@example.com",
+      "validations": {
+        "required": "Email is required",
+        "pattern": { "value": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", "message": "Invalid email" }
+      }
+    },
+    {
+      "c_name": "TextInput",
+      "fieldName": "password",
+      "path": "creds.password",
+      "label": "Password",
+      "type": "password",
+      "helper": "Min 8 characters",
+      "validations": { "required": "Password is required", "minLength": { "value": 8, "message": "Too short" } }
+    },
+    {
+      "c_name": "Select",
+      "fieldName": "country",
+      "path": "country",
+      "label": "Country",
+      "options": [{ "value": "us", "label": "United States" }, { "value": "ca", "label": "Canada" }]
+    }
+]

@@ -1,14 +1,5 @@
-import Button from "./components/Button";
-import TextInput from "./components/TextInput";
+import SignUp from "./pages/signup/signUp";
 
-export default function App()
-{
-  return (
-    <>
-      <div className="">
-        <TextInput />
-        <Button>Click Here</Button>
-      </div>
-    </>
-  )
+export default function App() {
+  return <SignUp />;
 }
