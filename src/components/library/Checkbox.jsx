@@ -1,4 +1,5 @@
 import { useFormContext } from "react-hook-form";
+import { getNested } from "../SDUI_utils";
 
 function Checkbox({
   fieldName,
@@ -12,7 +13,7 @@ function Checkbox({
   const checkboxId = fieldName || `checkbox-${Math.random().toString(36).slice(2, 11)}`;
 
   const { register, formState: { errors } } = useFormContext();
-  const fieldError = errors?.[path]?.message;
+  const fieldError = getNested(errors, path)?.message;
 
   return (
     <div className="flex flex-col gap-1.5 w-full">

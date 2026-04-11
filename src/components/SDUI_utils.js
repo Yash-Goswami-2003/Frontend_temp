@@ -1,9 +1,3 @@
-export function useSDUIForm() {
-  const storeRef = useRef(null);
-
-  if (!storeRef.current) {
-    storeRef.current = createFormStore();
-  }
-
-  return storeRef.current;
-}   
+export function getNested(obj, path) {
+  return path.split(".").reduce((acc, key) => acc?.[key], obj);
+}

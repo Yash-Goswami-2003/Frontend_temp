@@ -1,18 +1,12 @@
 import { FormProvider, useForm } from "react-hook-form";
 import ComponentRenderer from "./ComponentRenderer";
 
-function InputFieldsRenderer({configs,formObject}) {
+function InputFieldsRenderer({configs}) {
 
     return (
-        <FormProvider {...formObject}>
-        <form >
-            {
-                configs.map((config, index) => (
-                    <ComponentRenderer key={index} config={config} />
-                ))
-            }
-        </form>
-        </FormProvider>
+        configs.map((config, index) => (
+            <ComponentRenderer key={index} config={config} />
+        ))
     );
 }
 
