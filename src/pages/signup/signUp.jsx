@@ -64,7 +64,7 @@ function SignUp() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-md mx-auto">
+      <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h1>
