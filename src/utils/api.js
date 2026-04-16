@@ -67,6 +67,25 @@ export const getConfigurationById = async (id, includeAuth = true) => {
   });
 };
 
+// POST /config_master/{id}/comments - Add comment to a configuration
+export const addComment = async (id, text, includeAuth = true) => {
+  const endpoint = `${ENDPOINTS.CONFIG_MASTER}/${id}/comments`;
+  return fetchApi(endpoint, {
+    method: "POST",
+    headers: buildHeaders(includeAuth),
+    body: JSON.stringify({ text }),
+  });
+};
+
+// DELETE /config_master/{id}/comments/{commentId} - Delete a comment
+export const deleteComment = async (id, commentId, includeAuth = true) => {
+  const endpoint = `${ENDPOINTS.CONFIG_MASTER}/${id}/comments/${commentId}`;
+  return fetchApi(endpoint, {
+    method: "DELETE",
+    headers: buildHeaders(includeAuth),
+  });
+};
+
 // ==================== Auth APIs ====================
 
 // POST /login - Login user

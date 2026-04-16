@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { logoutUser, getConfigurationById, updateConfiguration, createConfiguration, getConfigurations } from "../../utils/api";
+import { logoutUser, getConfigurationById, updateConfiguration, createConfiguration, getConfigurations, addComment, deleteComment } from "../../utils/api";
 import ConfigTable from "../../components/ConfigTable";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -80,6 +80,21 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
+  MessageCircle: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    </svg>
+  ),
+  Send: () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+    </svg>
+  ),
+  Trash: () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+  ),
 };
 
 // ─── Modal Wrapper ─────────────────────────────────────────────────────────────
@@ -97,7 +112,7 @@ function Modal({ open, onClose, children }) {
       style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in">
+      <div className="bg-white rounded-2xl shadow-2xl w-full animate-in" style={{ maxWidth: "900px" }}>
         {children}
       </div>
     </div>
@@ -554,6 +569,10 @@ function ViewEditProjectModal({ open, onClose, projectId, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState("details");
+  const [newComment, setNewComment] = useState("");
+  const [postingComment, setPostingComment] = useState(false);
+  const currentUserId = localStorage.getItem("userId");
 
   useEffect(() => {
     if (open && projectId) {
@@ -561,6 +580,7 @@ function ViewEditProjectModal({ open, onClose, projectId, onSaved }) {
         setLoading(true);
         setError(null);
         setIsEditing(false);
+        setActiveTab("details");
         try {
           const response = await getConfigurationById(projectId);
           setProject(response.document);
@@ -694,6 +714,37 @@ function ViewEditProjectModal({ open, onClose, projectId, onSaved }) {
   }
 
   const data = project?.data || {};
+  const comments = data.comments || [];
+
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+    setPostingComment(true);
+    try {
+      const response = await addComment(projectId, newComment);
+      const comment = response.comment;
+      setProject({
+        ...project,
+        data: { ...data, comments: [...comments, comment] },
+      });
+      setNewComment("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPostingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    try {
+      await deleteComment(projectId, commentId);
+      setProject({
+        ...project,
+        data: { ...data, comments: comments.filter(c => c.id !== commentId) },
+      });
+    } catch (err) {
+      console.error("Failed to delete comment:", err);
+    }
+  };
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -730,161 +781,269 @@ function ViewEditProjectModal({ open, onClose, projectId, onSaved }) {
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-auto">
-          {isEditing ? (
-            <div className="space-y-4">
-              {error && (
-                <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">
-                  <Icons.AlertTriangle />
-                  {error}
-                </div>
+        {/* Tab Navigation */}
+        {!isEditing && (
+          <div className="flex border-b border-slate-100 px-6">
+            <button
+              onClick={() => setActiveTab("details")}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "details"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Details
+            </button>
+            <button
+              onClick={() => setActiveTab("comments")}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                activeTab === "comments"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Icons.MessageCircle />
+              Comments
+              {comments.length > 0 && (
+                <span className="bg-slate-100 text-slate-600 text-xs px-1.5 py-0.5 rounded-full">
+                  {comments.length}
+                </span>
               )}
-              
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">Project Name</label>
-                <input
-                  value={data.name || ""}
-                  onChange={(e) => updateField("name", e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
-                />
-              </div>
+            </button>
+          </div>
+        )}
 
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">Description</label>
-                <textarea
-                  value={data.description || ""}
-                  onChange={(e) => updateField("description", e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all resize-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+        {/* Content */}
+        <div className="flex-1 overflow-hidden">
+          {isEditing ? (
+            <div className="p-6 overflow-auto h-full">
+              <div className="space-y-4">
+                {error && (
+                  <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+                    <Icons.AlertTriangle />
+                    {error}
+                  </div>
+                )}
+                
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Scope</label>
-                  <select
-                    value={data.scope || "internal"}
-                    onChange={(e) => updateField("scope", e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all bg-white"
-                  >
-                    <option value="internal">Internal</option>
-                    <option value="client">Client</option>
-                    <option value="public">Public</option>
-                  </select>
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Project Name</label>
+                  <input
+                    value={data.name || ""}
+                    onChange={(e) => updateField("name", e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
+                  />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Status</label>
-                  <select
-                    value={data.status || "Active"}
-                    onChange={(e) => updateField("status", e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all bg-white"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Draft">Draft</option>
-                    <option value="Archived">Archived</option>
-                  </select>
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">Priority</label>
-                <div className="flex gap-2">
-                  {["low", "medium", "high"].map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => updateField("priority", p)}
-                      className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
-                        data.priority === p
-                          ? "bg-blue-50 border-blue-200 text-blue-700"
-                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                      }`}
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Description</label>
+                  <textarea
+                    value={data.description || ""}
+                    onChange={(e) => updateField("description", e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1.5">Scope</label>
+                    <select
+                      value={data.scope || "internal"}
+                      onChange={(e) => updateField("scope", e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all bg-white"
                     >
-                      {p.charAt(0).toUpperCase() + p.slice(1)}
-                    </button>
-                  ))}
+                      <option value="internal">Internal</option>
+                      <option value="client">Client</option>
+                      <option value="public">Public</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1.5">Status</label>
+                    <select
+                      value={data.status || "Active"}
+                      onChange={(e) => updateField("status", e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all bg-white"
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Draft">Draft</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Archived">Archived</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Priority</label>
+                  <div className="flex gap-2">
+                    {["low", "medium", "high"].map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => updateField("priority", p)}
+                        className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
+                          data.priority === p
+                            ? "bg-blue-50 border-blue-200 text-blue-700"
+                            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {p.charAt(0).toUpperCase() + p.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1.5">Start Date</label>
+                    <input
+                      type="date"
+                      value={data.startDate || ""}
+                      onChange={(e) => updateField("startDate", e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1.5">End Date</label>
+                    <input
+                      type="date"
+                      value={data.endDate || ""}
+                      onChange={(e) => updateField("endDate", e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
+                    />
+                  </div>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Start Date</label>
-                  <input
-                    type="date"
-                    value={data.startDate || ""}
-                    onChange={(e) => updateField("startDate", e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
-                  />
+            </div>
+          ) : activeTab === "details" ? (
+            <div className="p-6 overflow-auto h-full">
+              <div className="space-y-5">
+                {/* Status badges */}
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getStatusColor(data.status)}`}>
+                    {data.status || "Draft"}
+                  </span>
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getPriorityColor(data.priority)}`}>
+                    {data.priority ? data.priority.charAt(0).toUpperCase() + data.priority.slice(1) : "Medium"} Priority
+                  </span>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-600 bg-indigo-50">
+                    {data.scope ? data.scope.charAt(0).toUpperCase() + data.scope.slice(1) : "Internal"} Scope
+                  </span>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1.5">End Date</label>
-                  <input
-                    type="date"
-                    value={data.endDate || ""}
-                    onChange={(e) => updateField("endDate", e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
-                  />
+
+                {/* Description */}
+                {data.description && (
+                  <div>
+                    <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Description</h4>
+                    <p className="text-sm text-slate-700 leading-relaxed">{data.description}</p>
+                  </div>
+                )}
+
+                {/* Timeline */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                      <Icons.Clock />
+                      Start Date
+                    </div>
+                    <p className="text-sm font-medium text-slate-900">
+                      {data.startDate ? new Date(data.startDate).toLocaleDateString() : "Not set"}
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                      <Icons.Clock />
+                      End Date
+                    </div>
+                    <p className="text-sm font-medium text-slate-900">
+                      {data.endDate ? new Date(data.endDate).toLocaleDateString() : "Not set"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Metadata */}
+                <div className="pt-4 border-t border-slate-100">
+                  <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Project Details</h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-slate-400">Created:</span>
+                      <span className="ml-2 text-slate-700">{data.createdAt ? new Date(data.createdAt).toLocaleDateString() : "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">ID:</span>
+                      <span className="ml-2 text-slate-700 font-mono">#{projectId}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="space-y-5">
-              {/* Status badges */}
-              <div className="flex items-center gap-2">
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getStatusColor(data.status)}`}>
-                  {data.status || "Draft"}
-                </span>
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getPriorityColor(data.priority)}`}>
-                  {data.priority ? data.priority.charAt(0).toUpperCase() + data.priority.slice(1) : "Medium"} Priority
-                </span>
-                <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-600 bg-indigo-50">
-                  {data.scope ? data.scope.charAt(0).toUpperCase() + data.scope.slice(1) : "Internal"} Scope
-                </span>
+            /* Comments Tab */
+            <div className="flex flex-col h-full">
+              <div className="flex-1 overflow-auto p-6">
+                {comments.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-4">
+                      <Icons.MessageCircle />
+                    </div>
+                    <p className="text-sm text-slate-500">No comments yet</p>
+                    <p className="text-xs text-slate-400 mt-1">Start the conversation by adding a comment</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {comments.map((comment) => (
+                      <div key={comment.id} className="flex gap-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+                          {comment.userId?.charAt(0).toUpperCase() || "U"}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="bg-slate-50 rounded-2xl rounded-tl-none px-4 py-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-medium text-slate-700">
+                                User {comment.userId?.slice(-4) || "Unknown"}
+                              </span>
+                              <span className="text-xs text-slate-400">
+                                {new Date(comment.createdAt).toLocaleString()}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-700 whitespace-pre-wrap">{comment.text}</p>
+                          </div>
+                          {comment.userId === currentUserId && (
+                            <button
+                              onClick={() => handleDeleteComment(comment.id)}
+                              className="mt-1 ml-2 text-xs text-red-500 hover:text-red-700 flex items-center gap-1 transition-colors"
+                            >
+                              <Icons.Trash />
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-
-              {/* Description */}
-              {data.description && (
-                <div>
-                  <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Description</h4>
-                  <p className="text-sm text-slate-700 leading-relaxed">{data.description}</p>
-                </div>
-              )}
-
-              {/* Timeline */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                    <Icons.Clock />
-                    Start Date
-                  </div>
-                  <p className="text-sm font-medium text-slate-900">
-                    {data.startDate ? new Date(data.startDate).toLocaleDateString() : "Not set"}
-                  </p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                    <Icons.Clock />
-                    End Date
-                  </div>
-                  <p className="text-sm font-medium text-slate-900">
-                    {data.endDate ? new Date(data.endDate).toLocaleDateString() : "Not set"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Metadata */}
-              <div className="pt-4 border-t border-slate-100">
-                <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Project Details</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-slate-400">Created:</span>
-                    <span className="ml-2 text-slate-700">{data.createdAt ? new Date(data.createdAt).toLocaleDateString() : "—"}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400">ID:</span>
-                    <span className="ml-2 text-slate-700 font-mono">#{projectId}</span>
-                  </div>
+              {/* Comment Input */}
+              <div className="border-t border-slate-100 p-4 bg-white">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
+                    placeholder="Write a comment..."
+                    className="flex-1 px-4 py-2.5 text-sm border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
+                  />
+                  <button
+                    onClick={handleAddComment}
+                    disabled={!newComment.trim() || postingComment}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    {postingComment ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Icons.Send />
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
