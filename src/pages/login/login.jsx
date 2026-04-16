@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import InputFieldsRenderer from "../../components/InputFieldsRenderer";
-import { getDashboard, signupUser } from "../../utils/api";
-import { CONFIG_TYPES } from "../../constants";
+import { getDashboard, loginUser } from "../../utils/api";
 
-const CONFIG_ID = 9;
-
-function SignUp() {
+function Login() {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,7 +16,7 @@ function SignUp() {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const data = await getDashboard(1);
+        const data = await getDashboard(2);
         setConfig(data.document?.data);
       } catch (err) {
         setError(err.message);
@@ -32,14 +29,19 @@ function SignUp() {
 
   const onSubmit = useCallback(async (data) => {
     try {
-      const result = await signupUser(data);
+      const result = await loginUser({
+        username: data.username,
+        password: data.password,
+      });
       if (result?.token) {
-        localStorage.setItem('token', result.token);
+        localStorage.setItem("token", result.token);
+        localStorage.setItem("userId", result.userId);
+        window.location.href = "/dashboard";
       }
-      console.log(result) ;
-      console.log("Sign up success:", result);
+      console.log("Login success:", result);
     } catch (err) {
-      console.error("Sign up error:", err);
+      console.error("Login error:", err);
+      alert(err.message || "Login failed");
     }
   }, []);
 
@@ -61,14 +63,12 @@ function SignUp() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
+      <div className="max-w-md mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
-          <p className="text-sm text-gray-500">Sign up to get started</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+          <p className="text-sm text-gray-500">Sign in to your account</p>
         </div>
 
-        {/* Form */}
         <FormProvider {...formObject}>
           <form onSubmit={formObject.handleSubmit(onSubmit)}>
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -79,16 +79,15 @@ function SignUp() {
               type="submit"
               className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
             >
-              Sign Up
+              Sign In
             </button>
           </form>
         </FormProvider>
 
-        {/* Footer */}
         <p className="text-center text-sm text-gray-500 mt-6">
-          Already have an account?{" "}
-          <a href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-            Sign in
+          Dont have an account?{" "}
+          <a href="/" className="text-blue-600 hover:text-blue-700 font-medium">
+            Sign up
           </a>
         </p>
       </div>
@@ -96,4 +95,4 @@ function SignUp() {
   );
 }
 
-export default SignUp;
+export default Login;

@@ -1,7 +1,10 @@
 import { useBuilderStore } from './store';
+import { useState } from 'react';
 
 function CanvasItem({ item, index, path = [], depth = 0 }) {
-  const { selectedId, selectComponent, removeFromCanvas, canvasItems } = useBuilderStore();
+  const { selectedId, selectComponent, removeFromCanvas, canvasItems, moveItem } = useBuilderStore();
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOver, setDragOver] = useState(null); // 'before', 'after', 'inside', or null
   const isSelected = selectedId === item._id;
   const isLayout = item.c_name === 'LayoutRenderer';
   const currentPath = [...path, index];
@@ -18,21 +21,131 @@ function CanvasItem({ item, index, path = [], depth = 0 }) {
     removeFromCanvas(item._id, parentPath);
   };
   
-  const handleDragOver = (e) => {
-    if (isLayout) {
+  // Tree reorder drag handlers
+  const handleDragStart = (e) => {
+    setIsDragging(true);
+    e.dataTransfer.setData('dragItemPath', JSON.stringify(currentPath));
+    e.dataTransfer.setData('dragItemId', item._id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handleDragOverItem = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const height = rect.height;
+    
+    // Determine drop position: before, after, or inside (for layouts)
+    if (isLayout && y > height * 0.3 && y < height * 0.7) {
+      setDragOver('inside');
+    } else if (y < height / 2) {
+      setDragOver('before');
+    } else {
+      setDragOver('after');
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOver(null);
+  };
+
+  const handleDropItem = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const dragPathStr = e.dataTransfer.getData('dragItemPath');
+    const type = e.dataTransfer.getData('componentType');
+    
+    // Calculate drop position fresh (avoid stale state)
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const height = rect.height;
+    let dropPosition;
+    if (isLayout && y > height * 0.3 && y < height * 0.7) {
+      dropPosition = 'inside';
+    } else if (y < height / 2) {
+      dropPosition = 'before';
+    } else {
+      dropPosition = 'after';
+    }
+    
+    setDragOver(null);
+    
+    // Handle new component drop (existing behavior for layouts)
+    if (type && isLayout && dropPosition === 'inside') {
+      const { addToCanvas } = useBuilderStore.getState();
+      addToCanvas(type, item._id);
+      return;
+    }
+    
+    // Handle reorder
+    if (dragPathStr) {
+      const dragPath = JSON.parse(dragPathStr);
+      const dragIdx = dragPath[dragPath.length - 1];
+      const dragParentPath = dragPath.slice(0, -1);
+      const hoverIdx = index;
+      const hoverParentPath = path;
+      
+      // Only allow reorder within same parent
+      if (JSON.stringify(dragParentPath) === JSON.stringify(hoverParentPath) && dragIdx !== hoverIdx) {
+        let targetIdx = hoverIdx;
+        // Adjust for removed item
+        if (dragIdx < hoverIdx) {
+          targetIdx = dropPosition === 'after' ? hoverIdx : hoverIdx - 1;
+        } else {
+          targetIdx = dropPosition === 'after' ? hoverIdx + 1 : hoverIdx;
+        }
+        moveItem(dragIdx, targetIdx, dragParentPath);
+      }
+    }
+  };
+
+  // Layout container handlers - for dropping into empty space or reordering
+  const handleLayoutDragOver = (e) => {
+    const type = e.dataTransfer.getData('componentType');
+    const dragPathStr = e.dataTransfer.getData('dragItemPath');
+    // Allow drop for new components OR for reordering items
+    if (isLayout && (type || dragPathStr)) {
       e.preventDefault();
       e.stopPropagation();
     }
   };
   
-  const handleDrop = (e) => {
-    if (isLayout) {
-      e.preventDefault();
-      e.stopPropagation();
-      const type = e.dataTransfer.getData('componentType');
-      if (type) {
-        const { addToCanvas } = useBuilderStore.getState();
-        addToCanvas(type, item._id);
+  const handleLayoutDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const type = e.dataTransfer.getData('componentType');
+    const dragPathStr = e.dataTransfer.getData('dragItemPath');
+    
+    // Handle new component drop
+    if (type && isLayout) {
+      const { addToCanvas } = useBuilderStore.getState();
+      addToCanvas(type, item._id);
+      return;
+    }
+    
+    // Handle reorder - dropping into layout container
+    if (dragPathStr && isLayout) {
+      const dragPath = JSON.parse(dragPathStr);
+      const dragIdx = dragPath[dragPath.length - 1];
+      const dragParentPath = dragPath.slice(0, -1);
+      const targetPath = currentPath; // Path to this layout
+      
+      // Only if coming from a different parent (moving into this layout)
+      if (JSON.stringify(dragParentPath) !== JSON.stringify(targetPath)) {
+        // For now, move to end of this layout
+        const targetFields = item.fields || [];
+        const targetIdx = targetFields.length;
+        
+        // This would need a moveBetweenParents action in store
+        // For now, just remove from old and add to new at end
+        // We'll use a simpler approach - just add support in store first
       }
     }
   };
@@ -43,12 +156,26 @@ function CanvasItem({ item, index, path = [], depth = 0 }) {
         relative border rounded transition-all cursor-pointer group text-left
         ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}
         ${isLayout ? 'p-2' : 'p-1.5'}
+        ${isDragging ? 'opacity-50' : ''}
+        ${dragOver === 'before' ? 'border-t-2 border-t-blue-500' : ''}
+        ${dragOver === 'after' ? 'border-b-2 border-b-blue-500' : ''}
+        ${dragOver === 'inside' && isLayout ? 'ring-2 ring-blue-300 bg-blue-50/50' : ''}
       `}
       style={{ marginLeft: `${depth * 8}px` }}
       onClick={handleClick}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOverItem}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDropItem}
     >
+      {/* Drag handle */}
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 -ml-3 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing">
+        <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+        </svg>
+      </div>
       {/* Compact Header */}
       <div className="flex items-center justify-between gap-1">
         <div className="flex items-center gap-1.5 min-w-0">
@@ -81,10 +208,14 @@ function CanvasItem({ item, index, path = [], depth = 0 }) {
       
       {/* Nested fields - compact */}
       {isLayout && item.fields && (
-        <div className="space-y-1 mt-1 pt-1 border-t border-gray-200 border-dashed">
+        <div 
+          className="space-y-1 mt-1 pt-1 border-t border-gray-200 border-dashed"
+          onDragOver={handleLayoutDragOver}
+          onDrop={handleLayoutDrop}
+        >
           {item.fields.length === 0 ? (
             <p className="text-[10px] text-gray-400 text-center py-1">
-              Drop here
+              Drop here or drag to reorder
             </p>
           ) : (
             item.fields.map((child, childIndex) => (

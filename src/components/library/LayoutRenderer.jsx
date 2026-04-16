@@ -18,10 +18,11 @@ function LayoutRenderer({
 
   return (
     <div
-      className={`w-full grid gap-${gap}`}
+      className={`w-full grid`}
       style={{
         gridTemplateColumns,
         gridTemplateRows,
+        gap: `${gap}rem`,
       }}
       {...props}
     >
