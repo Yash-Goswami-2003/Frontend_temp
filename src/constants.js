@@ -1,5 +1,6 @@
 // API Base URLs
 // export const API_BASE_URL = "http://localhost:3000";
+// Your backend API URL - update this to match your deployed backend
 export const API_BASE_URL = "https://backend-temp-lac.vercel.app";
 
 // API Endpoints
