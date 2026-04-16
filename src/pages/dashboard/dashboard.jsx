@@ -619,9 +619,61 @@ function ViewEditProjectModal({ open, onClose, projectId, onSaved }) {
   if (loading) {
     return (
       <Modal open={open} onClose={onClose}>
-        <div className="p-8 flex items-center justify-center gap-3">
-          <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-slate-500">Loading project...</span>
+        <div className="flex flex-col" style={{ maxHeight: "85vh" }}>
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-slate-200 rounded-xl animate-pulse" />
+              <div className="space-y-2">
+                <div className="w-32 h-5 bg-slate-200 rounded animate-pulse" />
+                <div className="w-20 h-3 bg-slate-200 rounded animate-pulse" />
+              </div>
+            </div>
+            <div className="w-8 h-8 bg-slate-200 rounded-lg animate-pulse" />
+          </div>
+
+          {/* Content Skeleton */}
+          <div className="p-6 space-y-5">
+            {/* Status badges */}
+            <div className="flex items-center gap-2">
+              <div className="w-16 h-6 bg-slate-200 rounded-lg animate-pulse" />
+              <div className="w-20 h-6 bg-slate-200 rounded-lg animate-pulse" />
+              <div className="w-16 h-6 bg-slate-200 rounded-lg animate-pulse" />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <div className="w-24 h-3 bg-slate-200 rounded animate-pulse" />
+              <div className="w-full h-4 bg-slate-200 rounded animate-pulse" />
+              <div className="w-3/4 h-4 bg-slate-200 rounded animate-pulse" />
+            </div>
+
+            {/* Timeline */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                <div className="w-16 h-3 bg-slate-200 rounded animate-pulse" />
+                <div className="w-24 h-4 bg-slate-200 rounded animate-pulse" />
+              </div>
+              <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                <div className="w-16 h-3 bg-slate-200 rounded animate-pulse" />
+                <div className="w-24 h-4 bg-slate-200 rounded animate-pulse" />
+              </div>
+            </div>
+
+            {/* Metadata */}
+            <div className="pt-4 border-t border-slate-100 space-y-3">
+              <div className="w-24 h-3 bg-slate-200 rounded animate-pulse" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="w-full h-4 bg-slate-200 rounded animate-pulse" />
+                <div className="w-full h-4 bg-slate-200 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Skeleton */}
+          <div className="px-6 py-4 border-t border-slate-100">
+            <div className="w-full h-10 bg-slate-200 rounded-lg animate-pulse" />
+          </div>
         </div>
       </Modal>
     );
